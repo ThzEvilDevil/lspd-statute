@@ -1,0 +1,337 @@
+<div class="lspd-container" style="font-family: 'Segoe UI', Helvetica, Arial, sans-serif; max-width: 1100px; margin: 20px auto; border: 2px solid #002d62; border-radius: 8px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.2); position: relative; background: #fff;">
+    <div style="background: linear-gradient(90deg, #002d62 0%, #0056b3 100%); color: white; padding: 20px; display: flex; align-items: center; justify-content: space-between;">
+        <div>
+            <h2 style="margin: 0; text-transform: uppercase; letter-spacing: 2px; font-size: 24px;">Los Santos Police Department</h2>
+            <p style="margin: 5px 0 0 0; opacity: 0.8; font-size: 14px;">MDT Booking & Reference System</p>
+        </div>
+        <div style="text-align: right; font-weight: bold; border-left: 2px solid rgba(255,255,255,0.3); padding-left: 15px;">
+            CITY STATUTE<br>2026 | EN3 EDITION
+        </div>
+    </div>
+
+    <div id="basketContainer" style="background: #eef2f7; padding: 15px; border-bottom: 2px solid #002d62; display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+            <div>
+                <strong style="color: #002d62;">Selected Charges for Booking:</strong>
+                <div id="totalsDisplay" style="margin-top: 5px; font-size: 14px; color: #333;">
+                    Total Fine: <span id="totalFine" style="font-weight: bold; color: #c62828;">$0</span> | 
+                    Total Sentence: <span id="totalSentence" style="font-weight: bold; color: #0056b3;">0 Months</span>
+                </div>
+            </div>
+            <div>
+                <button onclick="copyAllSelected()" style="background: #2e7d32; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-right: 10px;">Copy All Selected</button>
+                <button onclick="clearSelection()" style="background: #c62828; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer;">Clear Selection</button>
+            </div>
+        </div>
+        <div id="selectedList" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
+    </div>
+
+    <div style="background: #f4f7f9; padding: 20px; border-bottom: 1px solid #ddd;">
+        <input type="text" id="codeSearch" onkeyup="searchCodes()" placeholder="Search by name, code, or category..." 
+               style="width: 100%; padding: 15px; border: 2px solid #002d62; border-radius: 5px; font-size: 16px; outline: none; box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);">
+    </div>
+
+    <div style="max-height: 500px; overflow-y: auto;">
+        <table id="codeTable" width="100%" style="border-collapse: collapse; text-align: left;">
+            <thead>
+                <tr style="background: #002d62; color: white; position: sticky; top: 0; z-index: 10;">
+                    <th style="padding: 15px; width: 10%;">Code</th>
+                    <th style="padding: 15px; width: 30%;">Offense Description</th>
+                    <th style="padding: 15px; width: 12%;">Sentence</th>
+                    <th style="padding: 15px; width: 20%;">Fine / Penalty</th>
+                    <th style="padding: 15px; width: 18%;">Notes (Threat Level)</th>
+                    <th style="padding: 15px; width: 10%; text-align: center;">Add</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+
+    <div id="copyToast" style="display: none; position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 12px 25px; border-radius: 30px; font-size: 14px; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
+        Charges copied to clipboard!
+    </div>
+
+    <div style="background: #002d62; color: white; padding: 10px 20px; font-size: 12px; text-align: center;">
+        Obey & Survive • LSPD Internal Records • Unauthorized Access Prohibited
+    </div>
+</div>
+
+<script>
+const lawData = [
+	// --- SECTION 2: CRIMES AGAINST SOCIETY ---
+{code: "P.C. 2.1.1", name: "Possession of Cocaine (Small)", sentence: "N/A", fine: "$10,000 + Confiscation"},
+  {code: "P.C. 2.1.2", name: "Possession of Cocaine (Moderate)", sentence: "N/A", fine: "$30,000 + Confiscation"},
+  {code: "P.C. 2.1.3", name: "Possession of Cocaine (Intent to Supply)", sentence: "30 Months", fine: "$55,000 + Confiscation"},
+  {code: "P.C. 2.2.1", name: "Possession of Cannabis (Small)", sentence: "N/A", fine: "$8,000 + Confiscation"},
+  {code: "P.C. 2.2.2", name: "Possession of Cannabis (Moderate)", sentence: "N/A", fine: "$30,000 + Confiscation"},
+  {code: "P.C. 2.2.3", name: "Possession of Cannabis (Intent to Supply)", sentence: "30 Months", fine: "$55,000 + Confiscation"},
+  {code: "P.C. 2.2.4", name: "Cultivation of Cannabis (Small)", sentence: "15 Months", fine: "$20,000 + Confiscation"},
+  {code: "P.C. 2.2.5", name: "Cultivation of Cannabis (Large)", sentence: "45 Months", fine: "$40,000 + Confiscation"},
+  {code: "P.C. 2.3", name: "Usage of Illicit Substances in Public", sentence: "N/A", fine: "$15,000 + Confiscation"},
+  {code: "P.C. 2.4.1", name: "Possession of Prohibited Items (Small)", sentence: "N/A", fine: "$15,000 + Confiscation"},
+  {code: "P.C. 2.4.2", name: "Possession of Prohibited Items (Large)", sentence: "30 Months", fine: "$20,000 + Confiscation"},
+  {code: "P.C. 2.4.3", name: "Sale of Prohibited Items in Public Shops", sentence: "45 Months", fine: "$30,000 + Confiscation"},
+  {code: "P.C. 2.5.1", name: "Carrying Without a License", sentence: "N/A", fine: "$20,000 + Confiscation"},
+  {code: "P.C. 2.5.2", name: "Overcarrying", sentence: "30 Months", fine: "$20,000 + Confiscation"},
+  {code: "P.C. 2.5.3", name: "Open Carrying", sentence: "30 Months", fine: "$15,000 + Confiscation + Revocation of License"},
+  {code: "P.C. 2.5.4", name: "Possession of a Prohibited Weapon", sentence: "30 Months", fine: "$15,000 + Confiscation"},
+  {code: "P.C. 2.5.5", name: "Possession of Multiple Prohibited Weapons", sentence: "45 Months", fine: "$30,000 + Confiscation"},
+  {code: "P.C. 2.5.6", name: "Brandishing of a Weapon", sentence: "45 Months", fine: "$25,000 + Confiscation + Revocation of License"},
+  {code: "P.C. 2.5.7", name: "Possession of State Issued Articles", sentence: "45 Months", fine: "$40,000 + Confiscation"},
+  {code: "P.C. 2.5.8", name: "Discharging a Weapon in a Public Place", sentence: "15 Months", fine: "$15,000 + Confiscation + Revocation of License"},
+  {code: "P.C. 2.6.1", name: "Non-lethal Battery", sentence: "15 Months", fine: "$10,000"},
+  {code: "P.C. 2.6.2", name: "Manslaughter", sentence: "45 Months", fine: "$20,000"},
+  {code: "P.C. 2.6.3", name: "Assault by Threat", sentence: "45 Months", fine: "$20,000"},
+  {code: "P.C. 2.6.4", name: "Attempted Murder", sentence: "75 Months", fine: "$35,000"},
+  {code: "P.C. 2.6.5", name: "Murder Through Hostile Action", sentence: "60 Months", fine: "$35,000"},
+  {code: "P.C. 2.6.6", name: "Rape / Sexual Assault", sentence: "75 Months", fine: "$55,000"},
+  {code: "P.C. 2.7.1", name: "Failure to Act", sentence: "15 Months", fine: "$10,000"},
+  {code: "P.C. 2.7.2", name: "Refusal of Duty to Act", sentence: "45 Months", fine: "Dismissal from the org"},
+  {code: "P.C. 2.7.3", name: "Failure to Act by a Civil Servant", sentence: "45 Months", fine: "Dismissal from the org"},
+  {code: "P.C. 2.7.4", name: "Negligence I", sentence: "45 Months", fine: "$35,000"},
+  {code: "P.C. 2.7.4.1", name: "Negligence II", sentence: "30 Months", fine: "$40,000"},
+  {code: "P.C. 2.8.1", name: "Kidnapping", sentence: "60 Months", fine: "$35,000"},
+  {code: "P.C. 2.8.2", name: "Taking a Hostage", sentence: "60 Months", fine: "$50,000"},
+  {code: "P.C. 2.8.3", name: "Unlawful Detention", sentence: "45 Months", fine: "$20,000"},
+  {code: "P.C. 2.9.1", name: "Disorderly Conduct", sentence: "15 Months", fine: "$20,000"},
+  {code: "P.C. 2.9.2", name: "Street Harassment", sentence: "30 Months", fine: "$15,000"},
+  {code: "P.C. 2.9.3", name: "Sexual Harassment", sentence: "45 Months", fine: "$32,000"},
+  {code: "P.C. 2.9.4", name: "Stalking", sentence: "60 Months", fine: "$36,000"},
+  {code: "P.C. 2.9.5", name: "Hooliganism", sentence: "45 Months", fine: "$15,000"},
+  {code: "P.C. 2.9.6", name: "Rioting", sentence: "45 Months", fine: "$40,000"},
+  {code: "P.C. 2.9.7", name: "Violation of Regulations for Public Meeting I", sentence: "45 Months", fine: "$25,000"},
+  {code: "P.C. 2.9.7.1", name: "Violation of Regulations for Public Meeting II", sentence: "60 Months", fine: "$35,000"},
+  {code: "P.C. 2.9.7.2", name: "Violation of Regulations for Public Meeting III", sentence: "75 Months", fine: "$45,000"},
+  {code: "P.C. 2.9.8", name: "Spreading of Disease", sentence: "N/A", fine: "$15,000"},
+  {code: "P.C. 2.9.9", name: "Indecent Exposure", sentence: "30 Months", fine: "$20,000"},
+  {code: "P.C. 2.9.10", name: "Provoking", sentence: "30 Months", fine: "$18,000"},
+  {code: "P.C. 2.9.11", name: "Defamation of Character", sentence: "45 Months", fine: "$50,000"},
+  {code: "P.C. 2.9.11.1", name: "Assault of a Senior/Elderly Citizen", sentence: "75 Months", fine: "$50,000"},
+  {code: "P.C. 2.9.12", name: "Complicity I", sentence: "45 Months", fine: "$40,000"},
+  {code: "P.C. 2.9.13", name: "Complicity II", sentence: "30 Months", fine: "$25,000"},
+  {code: "P.C. 2.10.1", name: "Document Forgery", sentence: "45 Months", fine: "$36,000"},
+  {code: "P.C. 2.10.2", name: "Looting of an ATM", sentence: "30 Months", fine: "$15,000"},
+  {code: "P.C. 2.10.3", name: "Theft of Property", sentence: "45 Months", fine: "$20,000"},
+  {code: "P.C. 2.10.4", name: "Fraud", sentence: "45 Months", fine: "$30,000"},
+  {code: "P.C. 2.10.5", name: "Grand Theft Auto", sentence: "45 Months", fine: "$32,000"},
+  {code: "P.C. 2.10.6", name: "Robbery", sentence: "60 Months", fine: "$38,000"},
+  {code: "P.C. 2.10.7", name: "False Advertisement", sentence: "N/A", fine: "$15,000"},
+  {code: "P.C. 2.10.7.1", name: "Illegal Advertisement", sentence: "N/A", fine: "$38,000"},
+  {code: "P.C. 2.11.1", name: "Attempted Suicide", sentence: "N/A", fine: "Mandatory mental health screening"},
+  {code: "P.C. 2.11.2", name: "Conspiracy to Commit a Crime", sentence: "30 Months", fine: "$20,000"},
+  {code: "P.C. 2.11.3", name: "Vandalism", sentence: "45 Months", fine: "$23,000"},
+  {code: "P.C. 2.11.4", name: "Illegal Fishing", sentence: "N/A", fine: "$10,000"},
+  {code: "P.C. 2.11.5", name: "Breach of Contract", sentence: "45 Months", fine: "Agreed sum detailed in contract"},
+    // --- SECTION 3: CRIMES AGAINST STATE ---
+{code: "P.C. 3.1.1", name: "Participation in Terrorism", sentence: "75 Months", fine: "$50,000"},
+  {code: "P.C. 3.1.2", name: "Terroristic Acts", sentence: "75 Months", fine: "$50,000"},
+  {code: "P.C. 3.1.3", name: "Organization of Terrorism", sentence: "75 Months", fine: "$75,000"},
+  {code: "P.C. 3.1.4", name: "Leading a Terrorist Organization", sentence: "75 Months", fine: "$100,000"},
+  {code: "P.C. 3.1.5", name: "Formation of an Armed Group", sentence: "60 Months", fine: "$40,000"},
+  {code: "P.C. 3.1.6", name: "Banditry", sentence: "60 Months", fine: "$35,000"},
+  {code: "P.C. 3.2", name: "Obstruction of Justice", sentence: "45 Months", fine: "$35,000"},
+  {code: "P.C. 3.3", name: "Attempted Seizure of Power / Treason", sentence: "75 Months", fine: "$120,000"},
+  {code: "P.C. 3.4.1", name: "Trespassing on Private Property", sentence: "30 Months", fine: "$15,000"},
+  {code: "P.C. 3.4.2", name: "Trespassing on State Property", sentence: "45 Months", fine: "$25,000"},
+  {code: "P.C. 3.4.3", name: "Breaking and Entering", sentence: "60 Months", fine: "$25,000"},
+  {code: "P.C. 3.5", name: "Failure to Comply", sentence: "60 Months", fine: "$35,000"},
+  {code: "P.C. 3.6", name: "Failure to Identify", sentence: "30 Months", fine: "$20,000"},
+  {code: "P.C. 3.7", name: "Illegal Gambling", sentence: "30 Months", fine: "$25,000"},
+  {code: "P.C. 3.8.1", name: "Impersonation of a Civil Servant", sentence: "30 Months", fine: "$45,000"},
+  {code: "P.C. 3.8.2", name: "Impersonation of a Law Enforcement Officer", sentence: "45 Months", fine: "$35,000"},
+  {code: "P.C. 3.9", name: "Battery of a Public Servant", sentence: "45 Months", fine: "$15,000"},
+  {code: "P.C. 3.10", name: "Attempted Murder of a Public Servant", sentence: "75 Months", fine: "$50,000"},
+  {code: "P.C. 3.11", name: "False Reporting", sentence: "45 Months", fine: "$20,000"},
+  {code: "P.C. 3.12", name: "Illegal Acquisition of State Secrets", sentence: "60 Months", fine: "$35,000"},
+  {code: "P.C. 3.13", name: "Hiding or Destroying Evidence", sentence: "45 Months", fine: "$40,000"},
+  {code: "P.C. 3.14", name: "Negligence in Communication", sentence: "45 Months", fine: "$30,000"},
+  {code: "P.C. 3.15.1", name: "Breach of Electoral Silence", sentence: "30 Months", fine: "$10,000"},
+  {code: "P.C. 3.15.2", name: "Blocking a Voting Site", sentence: "60 Months", fine: "$38,000"},
+  {code: "P.C. 3.15.3", name: "Illegal Persuasion of Votes", sentence: "60 Months", fine: "$40,000"},
+  {code: "P.C. 3.16.1", name: "Active Bribery", sentence: "45 Months", fine: "$25,000"},
+  {code: "P.C. 3.16.2", name: "Passive Bribery", sentence: "75 Months", fine: "$50,000"},
+  {code: "P.C. 3.16.3", name: "Quid Pro Quo", sentence: "75 Months", fine: "$50,000 + Dismissal"},
+  {code: "P.C. 3.17", name: "Failure to Pay Fines", sentence: "45 Months", fine: "$25,000"},
+  {code: "P.C. 3.18.1", name: "Evading Arrest", sentence: "45 Months", fine: "$25,000"},
+  {code: "P.C. 3.18.2", name: "Assisting Evasion of Arrest", sentence: "45 Months", fine: "$30,000"},
+  {code: "P.C. 3.19.1", name: "Street Harassment Towards a Colleague", sentence: "30 Months", fine: "$25,000 + Dismissal"},
+  {code: "P.C. 3.19.2", name: "Hostile Work Environment", sentence: "45 Months", fine: "$50,000 + Dismissal"},
+  {code: "P.C. 3.19.3", name: "Sexual Harassment Towards a Colleague", sentence: "45 Months", fine: "$50,000 + Dismissal"},
+  {code: "P.C. 3.19.4", name: "Absence Without Leave", sentence: "75 Months", fine: "$50,000 + Dismissal"},
+  {code: "P.C. 3.19.5", name: "Provoking a Public Servant", sentence: "30 Months", fine: "$36,000"},
+  {code: "P.C. 3.19.6", name: "Tax Evasion", sentence: "60 Months", fine: "Unpaid taxes (Max $100,000)"},
+    // --- SECTION 4: OFFICIAL MISCONDUCT ---
+{code: "P.C. 4.1", name: "Exceeding Granted Powers I", sentence: "60 Months", fine: "$45,000"},
+  {code: "P.C. 4.1.2", name: "Exceeding Granted Powers II", sentence: "75 Months", fine: "$55,000"},
+  {code: "P.C. 4.2", name: "Ill-use of Granted Powers I", sentence: "60 Months", fine: "$40,000"},
+  {code: "P.C. 4.2.1", name: "Ill-use of Granted Powers II", sentence: "75 Months", fine: "$60,000"},
+  {code: "P.C. 4.2.2", name: "Ill-use of Granted Powers III", sentence: "75 Months", fine: "$75,000"},
+  {code: "P.C. 4.3", name: "Disobeying an Order", sentence: "45 Months", fine: "$25,000"},
+  {code: "P.C. 4.3.1", name: "Failure to Comply with an Executive Order/Court Decision I", sentence: "45 Months", fine: "$35,000"},
+  {code: "P.C. 4.3.2", name: "Failure to Comply with an Executive Order/Court Decision II", sentence: "60 Months", fine: "$45,000"},
+  {code: "P.C. 4.3.3", name: "Failure to Comply with an Executive Order/Court Decision III", sentence: "75 Months", fine: "$55,000"},
+  {code: "P.C. 4.4", name: "Professional Misconduct", sentence: "75 Months", fine: "$75,000"},
+  {code: "P.C. 4.5", name: "Sabotage", sentence: "75 Months", fine: "$75,000"},
+  {code: "P.C. 4.6", name: "Espionage", sentence: "75 Months", fine: "$75,000"},
+  {code: "P.C. 4.7", name: "Conduct Unbecoming", sentence: "75 Months", fine: "$75,000"},
+  {code: "P.C. 4.8", name: "Corruption", sentence: "75 Months", fine: "$75,000"},
+  {code: "P.C. 4.9", name: "Disclosure of a State Secret", sentence: "75 Months", fine: "$75,000"},
+  {code: "P.C. 4.10", name: "Violation of Radio Calls and Department Ethics Code", sentence: "N/A", fine: "$10,000 + Potential Suspension/Blacklist"},
+  {code: "P.C. 4.11", name: "State Employee Assisting in Illegal Activities", sentence: "75 Months", fine: "Falls under §4.8 with judge approval"},
+  {code: "P.C. 4.12", name: "Insulting a First Person", sentence: "75 Months", fine: "N/A"},
+    // --- SECTION 5: JUDICIAL ---
+  {code: "P.C. 5.1", name: "Disobeying a Judicial Order", sentence: "60 Months", fine: "$40,000"},
+  {code: "P.C. 5.2", name: "Disruption of a Trial", sentence: "60 Months", fine: "$25,000"},
+  {code: "P.C. 5.3", name: "Dishonoring a Judiciary Member", sentence: "60 Months", fine: "$35,000"},
+  {code: "P.C. 5.4", name: "Contempt of Court", sentence: "60 Months", fine: "$28,000"},
+  {code: "P.C. 5.5", name: "Ill-use of a Judicial Permit", sentence: "60 Months", fine: "$25,000 + Revocation"},
+  {code: "P.C. 5.6", name: "Forged Evidence", sentence: "60 Months", fine: "$20,000"},
+  {code: "P.C. 5.7", name: "Perjury", sentence: "60 Months", fine: "$23,000"},
+
+    // --- SECTION 6: TRAFFIC ---
+  {code: "P.C. 6.1.1", name: "Minor Speed Violation", sentence: "N/A", fine: "$13,000", classification: "Infraction (Class C)"},
+  {code: "P.C. 6.1.2", name: "Mediocre Speed Violation", sentence: "N/A", fine: "$20,000", classification: "Infraction (Class B)"},
+  {code: "P.C. 6.1.3", name: "Major Speed Violation", sentence: "N/A", fine: "$25,000 + Revocation of License", classification: "Infraction (Class A)"},
+  {code: "P.C. 6.2", name: "Jaywalking", sentence: "N/A", fine: "$10,000", classification: "Infraction (Class C)"},
+  {code: "P.C. 6.3", name: "Abandonment of a Vehicle", sentence: "N/A", fine: "$10,000", classification: "Infraction (Class C)"},
+  {code: "P.C. 6.4", name: "Dangerous Transportation of People", sentence: "N/A", fine: "$10,000", classification: "Infraction (Class C)"},
+  {code: "P.C. 6.5", name: "Reckless Driving", sentence: "30 Months", fine: "$35,000", classification: "Felony (Class D)"},
+  {code: "P.C. 6.5.1", name: "Injury by Dangerous Driving", sentence: "45 Months", fine: "$25,000", classification: "Felony (Class C)"},
+  {code: "P.C. 6.5.2", name: "Death by Dangerous Driving", sentence: "60 Months", fine: "$55,000", classification: "Felony (Class B)"},
+  {code: "P.C. 6.6", name: "Failure to Yield to an Emergency Service Vehicle", sentence: "15 Months", fine: "$18,000", classification: "Felony (Class E)"},
+  // --- SECTION 7: TRAFFIC VIOLATIONS ---
+ {code: "T.C. 2.1", name: "Absence of a valid license plate", sentence: "N/A", fine: "$5,000"},
+  {code: "T.C. 3.2.1", name: "Driving in the opposite lane of the road", sentence: "N/A", fine: "$10,000"},
+  {code: "T.C. 3.2.2", name: "Driving the opposite lane of the highway", sentence: "30 Months", fine: "$15,000 + Revocation of License"},
+  {code: "T.C. 3.2.3", name: "Stopping on the road for no reason", sentence: "N/A", fine: "$15,000"},
+  {code: "T.C. 3.2.4", name: "Stopping on the highway for no reason", sentence: "N/A", fine: "$25,000 + Revocation of ALL Transport Licenses"},
+  {code: "T.C. 3.4.1", name: "Driving on deserted sidewalks/bike paths", sentence: "N/A", fine: "$10,000"},
+  {code: "T.C. 3.4.2", name: "Chaotic movement between lanes", sentence: "N/A", fine: "$5,000"},
+  {code: "T.C. 3.4.3", name: "Failure to keep the distance", sentence: "N/A", fine: "$5,000"},
+  {code: "T.C. 3.4.4", name: "Hard braking", sentence: "N/A", fine: "$20,000"},
+  {code: "T.C. 3.4.5", name: "Creating an obstruction for overtaking", sentence: "N/A", fine: "$10,000"},
+  {code: "T.C. 3.5", name: "Driving Under Influence", sentence: "30 Months", fine: "$20,000"},
+  {code: "T.C. 3.6.1", name: "Participation in a street race", sentence: "N/A", fine: "$15,000"},
+  {code: "T.C. 3.6.2", name: "Organizing a street race", sentence: "30 Months", fine: "$25,000"},
+  {code: "T.C. 5.5", name: "Violation of the speed limit inside a special zone", sentence: "N/A", fine: "$20,000"},
+  {code: "T.C. 6.2.a", name: "Parking on red curbs", sentence: "N/A", fine: "$10,000"},
+  {code: "T.C. 6.2.b", name: "Interfering with traffic following their lane", sentence: "N/A", fine: "$10,000"},
+  {code: "T.C. 6.2.c", name: "Blocking exit from anywhere", sentence: "N/A", fine: "$10,000"},
+  {code: "T.C. 6.2.d", name: "Parking on a crosswalk", sentence: "N/A", fine: "$10,000"},
+  {code: "T.C. 6.2.e", name: "Blocking more than 2/3 of a sidewalk or bike path", sentence: "N/A", fine: "$10,000"},
+  {code: "T.C. 6.2.f", name: "Parking on a driving lane", sentence: "N/A", fine: "$10,000"},
+  {code: "T.C. 6.2.g", name: "Parking against direction of traffic", sentence: "N/A", fine: "$10,000"},
+  {code: "T.C. 6.2.h", name: "Parking on bridges or in tunnels", sentence: "N/A", fine: "$10,000"},
+  {code: "T.C. 6.2.i", name: "Parking on the highway or freeway", sentence: "N/A", fine: "$10,000"},
+  {code: "T.C. 6.2.j", name: "Parking closer than 50 meters from a building on fire", sentence: "N/A", fine: "$10,000"},
+  {code: "T.C. 6.2.k", name: "Parking at bus stops", sentence: "N/A", fine: "$10,000"},
+  {code: "T.C. 6.2.l", name: "Parking on railway tracks", sentence: "N/A", fine: "$10,000"},
+  {code: "T.C. 6.2.m", name: "Parking in parking spaces marked in yellow", sentence: "N/A", fine: "$10,000"},
+  {code: "T.C. 6.2.n", name: "Parking in violation of road surface markings", sentence: "N/A", fine: "$10,000"},
+  {code: "T.C. 6.2.o", name: "Parking closer than 20 meters from an entrance or exit", sentence: "N/A", fine: "$10,000"},
+  {code: "T.C. 6.2.p", name: "Parking on lawns or green spaces", sentence: "N/A", fine: "$10,000"},
+  {code: "T.C. 6.2.q", name: "Parking in violation of Article 7", sentence: "N/A", fine: "$10,000"},
+  {code: "T.C. 6.4", name: "Unauthorized presence of a vehicle on DOC territory", sentence: "N/A", fine: "$15,000 + Towing"}
+];
+
+function getStars(sentenceStr) {
+    const months = parseInt(sentenceStr.match(/\d+/)) || 0;
+    if (months === 0) return "N/A";
+    let starCount = Math.min(5, Math.ceil(months / 15));
+    return "⭐".repeat(starCount);
+}
+
+function loadTable() {
+    const tableBody = document.getElementById('tableBody');
+    tableBody.innerHTML = lawData.map((law, index) => `
+        <tr style="border-bottom: 1px solid #eee; background: ${index % 2 === 0 ? '#ffffff' : '#f9f9f9'};">
+            <td style="padding: 15px; font-weight: bold; color: #0056b3;">${law.code}</td>
+            <td style="padding: 15px; color: #333;">${law.name}</td>
+            <td style="padding: 15px; color: #666; font-weight: 500;">${law.sentence}</td>
+            <td style="padding: 15px; font-weight: bold; color: #c62828;">${law.fine}</td>
+            <td style="padding: 15px; font-size: 14px; color: #fbc02d;">
+                ${getStars(law.sentence)}
+                <div style="font-size: 10px; color: #888; margin-top: 4px;">Time Based Rating</div>
+            </td>
+            <td style="padding: 15px; text-align: center;">
+                <button onclick="toggleCharge('${law.code}')" 
+                        style="background: #002d62; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold;">+</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+let selectedCharges = [];
+
+function toggleCharge(code) {
+    const law = lawData.find(l => l.code === code);
+    if (law && !selectedCharges.find(c => c.code === code)) {
+        selectedCharges.push(law);
+        updateTotals();
+        renderBasket();
+    }
+}
+
+function updateTotals() {
+    let totalFine = 0;
+    let totalMonths = 0;
+    selectedCharges.forEach(c => {
+        const fineMatch = c.fine.replace(/,/g, '').match(/\d+/);
+        if (fineMatch) totalFine += parseInt(fineMatch[0]);
+        const monthMatch = c.sentence.match(/\d+/);
+        if (monthMatch) totalMonths += parseInt(monthMatch[0]);
+    });
+    document.getElementById('totalFine').innerText = "$" + totalFine.toLocaleString();
+    document.getElementById('totalSentence').innerText = totalMonths + " Months";
+}
+
+function renderBasket() {
+    const basket = document.getElementById('basketContainer');
+    const list = document.getElementById('selectedList');
+    basket.style.display = selectedCharges.length > 0 ? 'block' : 'none';
+    list.innerHTML = selectedCharges.map(c => `
+        <span style="background: #002d62; color: white; padding: 5px 12px; border-radius: 20px; font-size: 13px; display: flex; align-items: center; border: 1px solid #001a3a;">
+            ${c.code} 
+            <span onclick="removeCharge('${c.code}')" style="margin-left: 10px; cursor: pointer; font-weight: bold; color: #ffab91;">×</span>
+        </span>
+    `).join('');
+}
+
+function removeCharge(code) {
+    selectedCharges = selectedCharges.filter(c => c.code !== code);
+    updateTotals();
+    renderBasket();
+}
+
+function clearSelection() {
+    selectedCharges = [];
+    updateTotals();
+    renderBasket();
+}
+
+function copyAllSelected() {
+    if (selectedCharges.length === 0) return;
+    const fineTotal = document.getElementById('totalFine').innerText;
+    const timeTotal = document.getElementById('totalSentence').innerText;
+    let text = "--- LSPD ARREST REPORT ---\n";
+    text += selectedCharges.map(c => `• [${c.code}] ${c.name} | Time: ${c.sentence} | Stars: ${getStars(c.sentence)}`).join('\n');
+    text += `\n\nTOTAL: ${timeTotal} | ${fineTotal}`;
+    navigator.clipboard.writeText(text).then(() => {
+        const toast = document.getElementById('copyToast');
+        toast.style.display = 'block';
+        setTimeout(() => { toast.style.display = 'none'; }, 2000);
+    });
+}
+
+function searchCodes() {
+    let input = document.getElementById("codeSearch").value.toUpperCase();
+    let table = document.getElementById("codeTable");
+    let tr = table.getElementsByTagName("tr");
+    for (let i = 1; i < tr.length; i++) {
+        let textValue = tr[i].textContent || tr[i].innerText;
+        tr[i].style.display = textValue.toUpperCase().indexOf(input) > -1 ? "" : "none";
+    }
+}
+
+loadTable();
+</script>
